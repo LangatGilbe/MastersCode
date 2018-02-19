@@ -16,9 +16,9 @@ rm(list=ls(all=TRUE))
 ## IMPORTING FUNCTIONs 
 ################################################################################
 
-source("E:/MSC/Code/Functions/Part1_Functions.R")
+source("E:/MSC/Code Repo/MastersCode/Part1_Functions.R")
 
-setwd("E:/MSC/Code/Final Part 1 Results/Set 4")
+setwd("E:/MSC/Code Repo/MastersCode")
 
 #set.seed(123)
 ##########################
@@ -116,19 +116,22 @@ for (S in species){
             #con_seq - connectance sequence, from 0.1 to 0.9 with step of 0.05
             ############################################################################
             
-            con_seq=seq(0.1,0.9,0.05)
+            con_seq=seq(0.1,0.9,0.1)
           
             for (z in con_seq){
-              
-              
-              
-                        int_mat=matrix(rbinom(S*S,1,z),S,S)
-                        for (j in 1:S) {
-                          int_mat[j,j]=1
-                        }
-                        connect_sim= networklevel(int_mat,index="connectance")
-                        connectA = append(connectA,connect_sim) ### appending the connectance values to connectA
-                        connectsim=data.frame(connectA)
+              int_mat=matrix(rbinom(S*S,1,z),S,S)
+              ind<-lower.tri(int_mat)
+              int_mat[ind]<-t(int_mat)[ind]
+              #mat[lower.tri(mat,diag = F)]<-rbinom((((S*(S+1))/2)-S),1,z)
+              #upper_mat<-t(mat)
+              #int_mat <-upper_mat+mat
+              #int_mat=matrix(rbinom(S*S,1,z),S,S)
+              for (j in 1:S) {
+                int_mat[j,j]=1
+                }
+              connect_sim= networklevel(int_mat,index="connectance")
+              connectA = append(connectA,connect_sim) ### appending the connectance values to connectA
+              connectsim=data.frame(connectA)
                       
                         
                         initial_nest=c()
@@ -361,7 +364,7 @@ for (S in species){
             
             # Coonectance, total abundance, Stability, Nestedness, and modularity values for each connectance value saved in one dataframe
             
-              Abund_connectance1=do.call(rbind, Map(data.frame,Connectance=connectA, Abundance_Nonswitch=rowSums(con_abund_NonSw),
+              Abund_connectance1=do.call(rbind, Map(data.frame,Connectance=con_seq, Abundance_Nonswitch=rowSums(con_abund_NonSw),
                                                     Abund_elim_switch=rowSums(con_abund_elimination),Abund_opt_switch=rowSums(con_abund_optimization),
                                                     Nested_Nonswitch=connect_nested,Nest_elim_switch=connect_nest_elim_switch,Nest_opt_switch=connect_nest_opt_switch,
                                                     Stability_NonSW=max_eigen_NonSw,Stability_Elim_sw=max_eigen_elim,Stability_Opt_sw=max_eigen_opt))
@@ -477,6 +480,7 @@ for (S in species){
               
               Compe_Row= cbind(Sorted_Compet_Abunda_row[1],Sorted_Compet_Abunda_row[3:5])
               Compe_Row_melted=melt(Compe_Row,id.vars = "row_wise")
+              ####################################################
               # ggplot(data=Compe_Row_melted,aes(x=row_wise,y=value, group=variable))+
               #   geom_point(aes(shape=variable), size=2.5)+
               #   #scale_shape_manual(values = c(1,2,5))+
@@ -492,7 +496,7 @@ for (S in species){
               # ggsave(paste0("CompeRow_",toString(c(S,SD)),".pdf"),width = 7.5,height = 7.5)
               # ggsave(paste0("CompeRow_",toString(c(S,SD)),".tiff"), width = 7.5,height = 7.5, units = 'in', dpi = 300)
               # 
-              
+              #####################################################################
             
               Compe_Column= cbind(Sorted_Compet_Abunda_row[2],Sorted_Compet_Abunda_row[3:5])
               Compe_Column_melted=melt(Compe_Column,id.vars = "column_wise")
@@ -857,9 +861,9 @@ ggsave("Pressure.pdf",width = 10,height = 10)
 
 ##########################################################
 
-Overall_COmbinedSpecies_rank$C[Overall_COmbinedSpecies_rank$C==1]=con_seq[1]
-Overall_COmbinedSpecies_rank$C[Overall_COmbinedSpecies_rank$C==9]=con_seq[9]
-Overall_COmbinedSpecies_rank$C[Overall_COmbinedSpecies_rank$C==17]=con_seq[17]
+Overall_COmbinedSpecies_rank$C[Overall_COmbinedSpecies_rank$C==which(con_seq==min(con_seq),arr.ind = T)]=con_seq[which(con_seq==min(con_seq),arr.ind = T)]
+Overall_COmbinedSpecies_rank$C[Overall_COmbinedSpecies_rank$C==which(con_seq==median(con_seq),arr.ind = T)]=con_seq[which(con_seq==median(con_seq),arr.ind = T)]
+Overall_COmbinedSpecies_rank$C[Overall_COmbinedSpecies_rank$C==which(con_seq==max(con_seq),arr.ind = T)]=con_seq[which(con_seq==max(con_seq),arr.ind = T)]
 
 Overall_COmbinedSpecies_rank$SD[Overall_COmbinedSpecies_rank$SD==1]=std_dvtn[1]
 Overall_COmbinedSpecies_rank$SD[Overall_COmbinedSpecies_rank$SD==2]=std_dvtn[2]
@@ -913,7 +917,69 @@ ggplot(subset(Overall_COmbinedSpecies_rankmelt,C%in%c(0.1,0.5,0.9) & S%in%50),ae
         V2, W_optimization, W_elimination, file="Community.RData")
    
 ###############################################################
+   ##AOB
    
+   MayProductivity1= cbind(SpeciesCommunity[13],SpeciesCommunity[2:4])
+   MayProductivity_melted1=melt(MayProductivity1,id.vars = "MaysRule")
+   pdtn1=ggplot(data=MayProductivity_melted1,aes(x=MaysRule,y=value, group=variable))+
+     geom_point(aes(shape=variable,color=variable),size=2.5)+
+     #scale_shape_manual(values = c(1,2,5))+
+     ylim(3,20) +
+     # stat_smooth_func(geom = "text",method = "lm",hjust=-3,parse=T)+
+     geom_smooth(method = "loess",se=F,aes(color=variable),size=0.75)+
+     #geom_smooth(method = "loess",se=F,col='black',aes(linetype=variable), size= 0.75)+
+     scale_color_discrete(breaks=c("Abundance_Nonswitch","Abund_elim_switch","Abund_opt_switch"),
+                          labels=c("Non-switch","Elimination", "Optimization"))+
+     scale_shape_discrete(breaks=c("Abundance_Nonswitch","Abund_elim_switch","Abund_opt_switch"),
+                          labels=c("Non-switch","Elimination", "Optimization"))+
+     theme_few()+
+     labs(y="Productivity",x=expression(~sigma*sqrt("SC")),aspect.ratio = 1)+
+     theme(legend.position = c(0.15,0.15),legend.title = element_blank(), aspect.ratio = 1)+
+     theme(axis.title=element_text(face="plain"),
+           axis.text =element_text(face = "plain",colour = "black"))
+   
+   #Saving plots in a folder (pdf & Tiff)
+   
+   ggsave(paste("Maysrule_vs_Productivity.pdf"),width = 7.5,height = 7.5)
+   ggsave(paste0("Maysrule_vs_Productivity.tiff"), width = 7.5,height = 7.5, units = 'in', dpi = 300)
+   
+   
+   # Stability vs May's Criterion
+   
+   MayLocal_Stab1= cbind(SpeciesCommunity[13],SpeciesCommunity[8:10])
+   MayLocal_Stab_melted1=melt(MayLocal_Stab1,id.vars = "MaysRule")
+   stable1=ggplot(data=MayLocal_Stab_melted1,aes(x=MaysRule,y=value, group=variable))+
+     geom_hline(aes(yintercept=0),size=0.9,colour='red',linetype="dashed")+
+     geom_point(aes(shape=variable,color=variable),size=2.5)+
+     ylim(-0.5, 0.1)+
+     geom_smooth(method = "loess",span=0.65,se=F,aes(color=variable),size=0.75)+
+     scale_color_discrete(breaks=c("Stability_NonSW","Stability_Elim_sw","Stability_Opt_sw"),
+                          labels=c("Non-switch","Elimination", "Optimization"))+
+     scale_shape_discrete(breaks=c("Stability_NonSW","Stability_Elim_sw","Stability_Opt_sw"),
+                          labels=c("Non-switch","Elimination", "Optimization"))+
+     theme_few()+
+     labs(y=expression("Re"~(lambda)),x=expression(~sigma*sqrt("SC")),aspect.ratio = 1)+
+     theme(legend.position = c(0.15,0.9),legend.title = element_blank(),aspect.ratio = 1)+
+     theme(axis.title=element_text(face="plain"),
+           axis.text =element_text(face = "plain",colour = "black"))
+   
+   #Saving plots in a folder (pdf & Tiff)
+   
+   ggsave(paste("Maysrule_vs_stability.pdf"),width = 7.5,height = 7.5)
+   ggsave(paste0("Maysrule_vs_stability.tiff"), width = 7.5,height = 7.5, units = 'in', dpi = 300)
+   
+   #Combining Productivity and Stability plots
+   
+   MayComparison1<- plot_grid(stable1+theme(legend.position = "None"),pdtn1+theme(legend.position = "None"),
+                             labels = "AUTO", align = 'h', label_size = 12, hjust = -0.5, vjust = -0.5,scale=c(1.,0.96))+
+     theme(plot.margin = unit(c(1,-0.2,-4.5,0.5), "cm")) 
+   legend_A <- get_legend(stable1+theme(legend.position = "top"))
+   plot_grid(MayComparison1,legend_A,ncol=1, rel_heights = c(2, 2))
+   
+   #Saving plots in a folder (pdf & Tiff)
+   
+   ggsave(paste("mayscriteria.pdf"), width = 7.5,height = 7.5)
+   ggsave(paste0("mayscriteria.tiff"), width = 7.5,height = 7.5, units = 'in', dpi = 300)
    
    ####################
    ##
