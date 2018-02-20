@@ -1,18 +1,29 @@
 #########################################################################################
-## Implementattion of Modified Lotka-Volterra model on Euler method
-#########################################################################################
+#CODE FOR RESEARCH MASTERS THESIS
+#Project: Implementattion of Modified Lotka-Volterra model on Euler method
+#By: Gilbert K Langat
+
 
 
 ##############################################
 #Clearing memory and Saving code to folder
 ##############################################
- 
+
 rm(list=ls(all=TRUE)) 
-setwd("E:/MSC/Code/Part 2 Code/Trial")
+
+
+################################################################################
+## IMPORTING FUNCTIONs 
+################################################################################
+
+source("E:/MSC/Code Repo/MastersCode/Spatial model functions.R")
+
+setwd("E:/MSC/Code Repo/MastersCode")
+
 #set.seed(123)
 ##########################
-### LOAD LIBRARIES
-##########################
+# LOAD LIBRARIES
+
 library(tidyverse)
 library(BiodiversityR)
 library(pracma)
@@ -25,23 +36,10 @@ library(magic)
 
 
 
-#############################
-## FUNCTION DEFINITIONS
-#############################
+################################################################################
+#Appending containers
+#
 
-###
-# lvm(t,pop,parms)
-# Use:	Function to calculate derivative of multispecies Lotka-Volterra equations
-# Input:
-# 	t: time (not used here, because there is no explicit time dependence)
-# 	pop: vector containing the current abundance of all species
-# 	parms: 	dummy variable,(used to pass on parameter values), Here, int_mat,str_mat,carry_cap,int_growth are parameter values
-#           with: int_mat     - interaction matrix,
-#                 str_mat     - competition strength matrix
-#                 carry_cap   -  carrying capacity
-#                 int_growth  - intrinsic growth rate
-# Output:
-#	dN: derivative of the Modified Lotka-Volterra equations
 NonSpatial_switchingdatalist=c()
 Non_switchingdatalist=list()
 Elimination_switchingdatalist=list()
@@ -50,298 +48,28 @@ Abundsite_datalist= list()
 
 combinedabundancelist = list()
 
+###############################################################
+ #initial value for parameters
 
-  
-  ###############################################################
-  NoSpatial_LVM <- function(t,pop,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,site){ 
-    
-    dN_LVM=int_growth*pop*((carry_cap-(Meta_Interaction_Matrix[,,site]*Meta_Strength_Matrix[,,site])%*%pop)/carry_cap)
-    return(dN_LVM)
-  }
-  
-  
-  ########################################################################################
-  #LVM funtion implementation  of NOn switching on EULER
-  ######################
-  NonSpatial_euler_meth = function( t_int, y_int, stepsize, t_end,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,site){      
-    m = length(y_int)+1
-    ## Number of steps and creation of output matrix
-    nsteps = ceiling((t_end-t_int)/stepsize)
-    Y_out = array(dim=c(nsteps+1,m,sites))
-   
-    ## loop for implementing the function over nsteps
-    for (i in 1:nsteps) {
-      
-      for(site in 1:sites){
-        Y_out[1,,site] = c(t_int, y_int)
-      
-      Y_out[i+1,,site]= Y_out[i,,site]+ stepsize*c(1, NoSpatial_LVM(Y_out[i,1,site],Y_out[i,2:m,site],Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,site))
-      }
-    }
-    
-    return(Y_out)
-  }
-  
-  
-  Spatial_LVM <- function(t,pop,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,Original_pop,Emigration_Prop,site){ 
-    
-    dN=int_growth*pop*((carry_cap-(Meta_Interaction_Matrix[,,site]*Meta_Strength_Matrix[,,site])%*%pop)/carry_cap) -
-        d*Original_pop[,site] + t(Mortality*(Emigration_Prop[site,]%*%t(Original_pop)))
-    return(dN)
-  }
-  
-  #####
-  #Sampling fuction 
-  #sample_g(x)
-  
-  sample_g <- function(x) {
-    if (length(x) <= 1) {
-      return(x)
-    } else {
-      return(sample(x,1))
-    }
-  }
-  
-  #########################
-  #LVM funtion implementation  of NOn switching on EULER
-  ##########################
-  Spatial_euler_meth = function( t_int, y_int, stepsize, t_end,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,Original_pop,Emigration_Prop,site){      
-    
-    m = length(y_int)+1
-    nsteps = ceiling((t_end-t_int)/stepsize)
-    Y_out = array(dim=c(nsteps+1,m,sites))
-    
-    
-    ## Number of steps and creation of output matrix
-    # Y_out[1,,1] = c(t_int, y_int)
-    # Y_out[1,,2] = c(t_int, y_int)
-    # Y_out[1,,3] = c(t_int, y_int)
-    
-    for (i in 1:nsteps) {
-       
-      updated_pop= y_int
-      
-       for(site in 1:sites){
-        
-        Y_out[1,,site] =c(t_int,y_int)
-        ## loop for implementing the function over nsteps
-        Y_out[i+1,,site]= Y_out[i,,site]+ stepsize*c(1, Spatial_LVM(Y_out[i,1,site],Y_out[i,2:m,site],Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,Original_pop,Emigration_Prop,site))
-      
-        updated_pop= Y_out[i+1,2:m,site]
-        }
-    }
-    return(Y_out)
-  }
-  
-  #########################################################
-  ##LVM funtion implementation  of Elimination switching algorithm on EULER
-  # #########################################################
-  # 
-  Meta_euler_meth_elimination_switch = function(t_int, y_int, stepsize, t_end,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,Original_pop,Emigration_Prop,site){
-    m = length(y_int)+1
-    ## Number of steps and creation of output matrix
-    nsteps = ceiling((t_end-t_int)/stepsize)
-    Y_out = array(dim=c(nsteps+1,m,sites))
-    
-    ## loop for implementing the function over nsteps
-    
-    for (i in 1:nsteps) {
-      current_pop=y_int
-      
-      for(site in 1:sites){
-        
-        Y_out[1,,site] = c(t_int, y_int)
-        
-      ## implementing the switching rule
-      Meta_Elim_Intstr=(Meta_Interaction_Matrix[,,site]*Meta_Strength_Matrix[,,site])* current_pop
-      
-      #switching_elim=1
-      #while(switching_elim<=5){
-      repeat{
-        IntRowsums=rowSums(Meta_Interaction_Matrix[,,site])
-        introwsums_greater1= which(IntRowsums>1,arr.ind = T)
-        j_elim=sample_g(introwsums_greater1)
-        if (sum(Meta_Interaction_Matrix[,,site][j_elim,])< S){
-          break
-        }
-      }
-      
-      Vec_elim=Meta_Elim_Intstr[j_elim,]
-      # New_Vec_elim = Vec_elim
-      # ## Ensuring the maximum value picked is not on the main diagonal
-      # k=sort(New_Vec_elim)[(S-1)]
-      # Next_max=which(Vec_elim==j)
-      # j=sample_g(Next_max)
-      MAX=0
-      j=1
-      for (k in 1:length(Vec_elim)){
-        if(k!=j_elim){
-          if (MAX < Vec_elim[k]){
-            MAX=Vec_elim[k]
-            j=k
-          }
-        }
-      }
-      
-      NI=which(Meta_Interaction_Matrix[,,site][j_elim,]!=1,arr.ind = T)     ## from the sampled row in str_mat check the position of all zeros
-      f=sample_g(NI)
-      Meta_Interaction_Matrix[,,site][j_elim,c(j,f)]= Meta_Interaction_Matrix[,,site][j_elim,c(f,j)]  ## swapping the value
-      
-      ##############################################################################
-       #switching_elim=switching_elim+1
-      #}
-      
-      ## Calcualting the nestedness of matrix int_mat and appending to NestA at each time step
-      # Nesta = nested(Meta_Interaction_Matrix[,,site],method="NODF",rescale = FALSE, normalised = TRUE)
-      # NestA <- c(NestA,Nesta)  ## Appending nestedness values at each time step to empty vector
-      
-      # ### connectance
-      # connectance_a=networklevel(Meta_Interaction_Matrix[,,site],index = "connectance")
-      # connectance_A = c(connectance_A,connectance_a)
-      ##############################################################################
-      
-      
-      Y_out[i+1,,site]= Y_out[i,,site]+ stepsize*c(1, Spatial_LVM(Y_out[i,1,site],Y_out[i,2:m,site],Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,Original_pop,Emigration_Prop,site))
-      current_pop= Y_out[i+1,2:m,site]
-      
-      }
-    }
-    return(Y_out)
-    
-  }
-  
-  ## LVM funtion implementation of optimization switching algorithm on EULER
-  #################################################################################################
-  Meta_euler_meth_optimization_switch = function(t_int, y_int, stepsize, t_end,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,Original_pop,Emigration_Prop,site){
-    m = length(y_int)+1
-    ## Number of steps and creation of output matrix
-    nsteps = ceiling((t_end-t_int)/stepsize)
-    Y_out = array(dim=c(nsteps+1,m,sites))
-    
-    ## loop for implementing the function over nsteps
-    
-    for (i in 1:nsteps) {
-      new_pop=y_int
-      
-      for (site in 1:sites){
-        
-        Y_out[1,,site] = c(t_int, y_int)
-      ## implementing the switching rule
-      Opt_Intstr=(Meta_Interaction_Matrix[,,site]*Meta_Strength_Matrix[,,site])*new_pop
-      
-      #switching_opt=1
-      #while(switching_opt<=5){
-      repeat{
-        IntRowsums=rowSums(Meta_Interaction_Matrix[,,site])
-        introwsums_greater=which(IntRowsums>2,arr.ind = T)
-        if (length(introwsums_greater)>1){
-          j_opt= sample_g(introwsums_greater)
-        }else{
-          j_opt=introwsums_greater
-        }
-        if (sum(Meta_Interaction_Matrix[,,site][j_opt,])< S){
-          break
-        }}
-    
-      Vec_opt= Opt_Intstr[j_opt,]
-      j_k=which(Vec_opt!=Vec_opt[j_opt] & Vec_opt!=0,arr.ind = T)
-      k_opt=sample_g(j_k)
-
-    
-      
-      j_m=which(Vec_opt!=Vec_opt[j_opt]& Vec_opt!=Vec_opt[k_opt],arr.ind = T)
-      new_removed_ind=c()
-      removed_ind=c(j_opt,k_opt)
-      enter=TRUE
-      while(enter==TRUE){
-        m_opt=sample_g(j_m)
-        switch_Meta_Interaction_Matrix=Meta_Interaction_Matrix[,,site]
-        switch_Meta_Strength_Matrix=Meta_Strength_Matrix[,,site]
-        
-        Meta_Interaction_Matrix[,,site][j_opt,c(k_opt,m_opt)]=Meta_Interaction_Matrix[,,site][j_opt,c(m_opt,k_opt)]
-        Meta_Strength_Matrix[,,site][j_opt,c(k_opt,m_opt)]=Meta_Strength_Matrix[,,site][j_opt,c(m_opt,k_opt)]
-        
-        dN_switch=int_growth*new_pop*((carry_cap-(Meta_Interaction_Matrix[,,site]*Meta_Strength_Matrix[,,site])%*%new_pop)/carry_cap)-
-          d*Original_pop[,site] + t(Mortality*(Emigration_Prop[site,]%*%t(Original_pop)))
-        
-        if ( dN_switch[j_opt] > 0){
-             enter=FALSE
-          }
-        else{
-          
-          Meta_Interaction_Matrix[,,site]=switch_Meta_Interaction_Matrix
-          Meta_Strength_Matrix[,,site]=switch_Meta_Strength_Matrix
-          
-          new_removed_ind=c(new_removed_ind,m_opt)
-  
-          j_m=j_m[!(j_m %in% new_removed_ind)]
-          
-          if (length(j_m)==0){
-            enter=FALSE
-          }
-        }
-      }
-      ######################################################
-      #switching_opt=switching_opt+1
-      
-      #}
-      
-      # Calcualting the nestedness of matrix int_mat and appending to NestA at each time step
-      # Nestopt = nested(Meta_Interaction_Matrix[,,site],method="NODF",rescale = FALSE, normalised = TRUE)
-      # Nest_opt <- c(Nest_opt,Nestopt)  ## Appending nestedness values at each time step to empty vector
-      
-      
-      
-      # ### connectance
-      # connectance_Opt=networklevel(Meta_Interaction_Matrix[,,site],index = "connectance")
-      # connectance_opt = c(connectance_opt,connectance_Opt)
-      
-      #######################################################################################
-      
-      Y_out[i+1,,site]= Y_out[i,,site]+ stepsize*c(1, Spatial_LVM(Y_out[i,1,site],Y_out[i,2:m,site],Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,Original_pop,Emigration_Prop,site))
-      new_pop= Y_out[i+1,2:m,site]
-      
-      }
-    }
-    return(Y_out)
-    
-  }
-  # 
-  # ####################################################################################################
-  
-  
-  
-  S=20
+  S=10
   p=S+1
   sites=3
-  #site=1
 
   int_growth=runif(S,min =0.5,max =0.5)
   carry_cap= runif(S, min=1, max=1)
   pop=runif(S,min =0,max =1)
   
-  #Original_pop=matrix(runif(S*sites,min =0,max =1), nrow=S, ncol=sites)
-  #for(site in 1:sites){
-  #pop=Original_pop[,site]
-  #}
-  #pop
-  
   Original_pop=replicate(3,pop)
   
   d=0.2
-  #Emigration_Prop[,-site]*Original_pop[,-site]
+
   Emigration_Prop=matrix(runif(sites*sites,min =d,max =d), nrow = sites, ncol=sites)
   for (emmirate in 1:sites) {
     Emigration_Prop[emmirate,emmirate]=0
   }
-  #Immigration_Prop=matrix(runif(S*sites,min =0.9,max =0.9),nrow = S, ncol = sites)
-  #Immigration_Prop=t(Emigration_Prop)
-  #Immigration_Prop=abs(rnorm(S,0,0.2))
+  
   Mortality= 0.5 
-  # Mortality= matrix(runif(sites*sites,min =0.75,max =0.75), nrow = sites, ncol=sites)
-  # for (mortal in 1:sites) {
-  #   Mortality[mortal,mortal]=0
-  # }
+  
   
   
   steps=10001
@@ -349,15 +77,8 @@ combinedabundancelist = list()
   ww=replicate(101,0)
   cc=c(0:100)
   
-  ##D for str_mat (competition strength matrix)
-  # D = matrix(rnorm(S*S,0,0.2),nrow=S)
-  # str_mat=abs(D)
-  # for (l in 1:S) {
-  #   str_mat[l,l]=1
-  # }
-  # 
-  # Meta_Strength_Matrix= array(replicate(sites,str_mat), dim=c(S,S,sites))
   Meta_Strength_Matrix= array(rep(abs(rnorm(50,0,0.25)),S*S*sites),dim = c(S,S,sites))
+  
   for (j in 1:S){
     for(patch1 in 1:sites){
       Meta_Strength_Matrix[j,j,patch1]=1
@@ -393,44 +114,27 @@ combinedabundancelist = list()
   # z - connectance
   #con_seq - connectance sequence, form o.1 to 0.9 with step of 0.05
   Total_abundance=list()
-  con_seq=seq(0.1,0.9,0.05)
+  con_seq=seq(0.1,0.9,0.2)
   for (z in 1:length(con_seq)){
-    # 
-    # int_mat=matrix(rbinom(S*S,1,con_seq[z]),S,S)
-    # for (j in 1:S) {
-    #   int_mat[j,j]=1
-    # }
-    # 
-    # Meta_Interaction_Matrix= array(replicate(sites,int_mat), dim=c(S,S,sites))
 
     Meta_Interaction_Matrix=array(rep(rbinom(50,1,con_seq[z]),S*S*sites), dim=c(S,S,sites))
+    
+    for (locality in 1:sites){
+      Local_Meta_Interaction_Matrix=Meta_Interaction_Matrix[,,locality]
+      ind<-lower.tri(Local_Meta_Interaction_Matrix)
+      Local_Meta_Interaction_Matrix[ind]<-t(Local_Meta_Interaction_Matrix)[ind]
+      Meta_Interaction_Matrix[,,locality]=Local_Meta_Interaction_Matrix
+    }
+    
     for (meta in 1:S){
       for(patch_int in 1:sites){
         Meta_Interaction_Matrix[meta,meta,patch_int]=1
       }
     }
     
-    ##################################################################
-    # connect_sim= networklevel(Meta_Interaction_Matrix[,,site],index="connectance")
-    # connectA = c(connectA,connect_sim) ### appending the connectance values to connectA
-    # connectsim=data.frame(connectA)
-    
-    
-  
-    
-    
-    # #initial_nest=c()
-    # initial_nest = nested(Meta_Interaction_Matrix[,,site],method='NODF',rescale=FALSE,normalised = TRUE)
-    # connect_nested = append(connect_nested,initial_nest)
-    # initial_nest=t(replicate(steps,initial_nest))
-    
-    ## Figures saved in a folder.
-    ## Euler method implemented over time 0-100 with 0.01 time step.
-    ## plotting the species dynamics over the time interval.
-    ## Non-swithing population dynamics plots for all connectance values.
- #############################################################################################   
+    #############################################################################################   
     Meta_NonSpatial_Switching=NonSpatial_euler_meth(0,pop, 0.01, 100,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,site)
-    ################################################################################################################
+    #############################################################################################
     
     Meta_NonSpatial_TAbundnance = c()
     
@@ -449,9 +153,10 @@ combinedabundancelist = list()
     connect_NonSpatialabundance=data.frame(rbind(connect_NonSpatialabundance,Meta_NonSpatial_TAbundnance[steps,]))
     
     
+    #######################################################################################################
     Meta_Non_Switching=Spatial_euler_meth(0,pop, 0.01, 100,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,Original_pop,Emigration_Prop,site)
-    ################
-   #  #######################################################################################################
+    
+    #######################################################################################################
    
     Meta_Nonswitch_TAbundnance = c()
     
@@ -469,53 +174,11 @@ combinedabundancelist = list()
     }
     
     connect_abundance=data.frame(rbind(connect_abundance,Meta_Nonswitch_TAbundnance[steps,]))
-    ###################################################################################################
-   #  Meta_NonSpatialswitching =transform(Meta_NonSpatial_Switching, T_abundanceNonSpatialsw=rowSums(Meta_NonSpatial_Switching[,2:(S+1),]))
-    # Meta_Spatialswitching =transform(Meta_Non_Switching, T_abundanceNonsw=rowSums(Meta_Non_Switching[2:(S+1)]))
-    # 
-    # 
-    # #V2=cbind(Non_Switching,T_abund1)
-    # con_abund_NonSpatialSw1 = c()
-    # con_abund_NonSpatialSw1=unlist(Meta_NonSpatialswitching[steps,2:(S+1)])
-    # con_abund_NonSpatialSw =rbind(con_abund_NonSpatialSw,con_abund_NonSpatialSw1)
-    # connect_NonSpatialabundance=append(connect_NonSpatialabundance,Meta_NonSpatialswitching[steps,(S+2)])
-    # 
-    # 
-    # con_abund_NonSw1 = c()
-    # con_abund_NonSw1=unlist(Meta_Spatialswitching[steps,2:(S+1)])
-    # con_abund_NonSw =rbind(con_abund_NonSw,con_abund_NonSw1)
-    # connect_abundance=append(connect_abundance,Meta_Spatialswitching[steps,(S+2)])
-    
-    
-    
-    
-    # ## Computing Nestedness, Stability, Connectance and Modularity
-    # 
-    # Y=t(replicate(S,pop))  
-    # NestA = c()
-    # Nest_int= nested(meta_int_mat[,,site],method = "NODF",rescale = FALSE,normalised = TRUE)
-    # NestA= c(NestA,Nest_int)
-    # 
-    # 
-    # connectance_A=c()
-    # Init_connectance=networklevel(meta_int_mat[,,site],index = "connectance")
-    # connectance_A = c(connectance_A,Init_connectance)
-    
-    ## Elimination switching population dynamics plots over the time step for every connectance value.
-    ## Plots saved in a folder.
-    
-    ###############################################################################################################
-    # ########################################################################################################
+   
+    ########################################################################################################
     Meta_elimination_switch=Meta_euler_meth_elimination_switch(0, pop, 0.01,100,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,Original_pop,Emigration_Prop,site)
-
-     ################ 
-    # con_abund_elim = c()
-    # con_abund_elim=unlist(Meta_elimination_switch[steps,2:(S+1)])
-    # con_abund_elimination =rbind(con_abund_elimination,con_abund_elim)
-    # #rowSums(con_abund_elimination)
-    # 
-    # ## computing species total abundance and appending on the population dynamics data frame.
-    #################
+    ########################################################################################################
+  
     Meta_Elimination_TAbundnance = c()
      
      
@@ -532,24 +195,13 @@ combinedabundancelist = list()
           }
     
     connect_abund_elim_switch=data.frame(rbind(connect_abund_elim_switch, Meta_Elimination_TAbundnance[steps,]))
-    ########################################################################
-    #Meta_SpatialElimination=transform(Meta_elimination_switch, T_abundanceElim=rowSums(Meta_elimination_switch[2:(S+1),,]))
-    # 
-    # connect_abund_elim_switch=append(connect_abund_elim_switch, Meta_SpatialElimination[steps,(S+3)])
-    # connect_nest_elim_switch= append(connect_nest_elim_switch,mean( Meta_SpatialElimination[,(S+2)]))
-    # #connect_stab_elim_switch= append(connect_stab_elim_switch,mean(W_elimination[,(S+3)]))
-    # #connect_mod_elim_switch = append(connect_mod_elim_switch,mean(W_elimination[,S+5]))
-    # 
-    
-    # connectance_opt=c()
-    # Init_opt_connectance=networklevel(meta_int_mat[,,site],index = "connectance")
-    # connectance_opt = c(connectance_opt,Init_opt_connectance)
-    # 
-    # ######################################################################################################
+
+    ######################################################################################################
     # ## Optimization switching population dynamics plots over the time step for every connectance value.
     # ## Plots saved in a folder.
+    
     Meta_optimization_switch=Meta_euler_meth_optimization_switch(0, pop, 0.01,100,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,Original_pop,Emigration_Prop,site)
-    ########################################
+    ######################################################################################################
     
     Meta_Optimization_TAbundnance = c()
     
@@ -597,21 +249,7 @@ combinedabundancelist = list()
     
     
     ##Stability computatation
-    
-    Modified_Spatial_LVM_stab <- function(pop){ 
-      
-      dN_Spatial_stab=int_growth*pop*((carry_cap-(IM*SM)%*%pop)/carry_cap) -
-        d*Original_pop[,site] + t(Mortality*(Emigration_Prop[site,]%*%t(Original_pop)))
-      
-      return(dN_Spatial_stab)
-    }
-    
-    Modified_NoSpatial_LVM <- function(pop){ 
-      
-      dN_NonSpatial=int_growth*pop*((carry_cap-(IM*SM)%*%pop)/carry_cap)
-      return(dN_NonSpatial)
-    }
-    
+ 
     max_eigen_NonSw=c();max_eigen_elim=c();max_eigen_NonSpatialSw=c()
     max_eigen_opt=c();Max_eigen_NonSW=c();Max_eigen_NonSpatialSw=c()
     Max_eigen_elim=c();Max_eigen_opt=c()
