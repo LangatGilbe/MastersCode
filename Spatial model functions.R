@@ -21,38 +21,38 @@ setwd("E:/MSC/Code Repo/MastersCode")
 # Output:
 #	dN: derivative of the Modified Lotka-Volterra equations
 #############################################################
-
-NoSpatial_LVM <- function(t,pop,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,site){ 
-  
-  dN_LVM=int_growth*pop*((carry_cap-(Meta_Interaction_Matrix[,,site]*Meta_Strength_Matrix[,,site])%*%pop)/carry_cap)
-  return(dN_LVM)
-  }
+# 
+# NoSpatial_LVM <- function(t,pop,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,site){ 
+#   
+#   dN_LVM=int_growth*pop*((carry_cap-(Meta_Interaction_Matrix[,,site]*Meta_Strength_Matrix[,,site])%*%pop)/carry_cap)
+#   return(dN_LVM)
+#   }
 
 
 #############################################################
 #LVM funtion implementation  of NOn switching on EULER
 #############################################################
 
-NonSpatial_euler_meth = function( t_int, y_int, stepsize, t_end,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,site){      
-
-  m = length(y_int)+1
-  ## Number of steps and creation of output matrix
-  
-  nsteps = ceiling((t_end-t_int)/stepsize)
-  Y_out = array(dim=c(nsteps+1,m,sites))
-  
-  ## loop for implementing the function over nsteps
-  for (i in 1:nsteps) {
-    
-    for(site in 1:sites){
-      Y_out[1,,site] = c(t_int, y_int)
-      
-      Y_out[i+1,,site]= Y_out[i,,site]+ stepsize*c(1, NoSpatial_LVM(Y_out[i,1,site],Y_out[i,2:m,site],Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,site))
-    
-    }
-    }
-  return(Y_out)
-  }
+# NonSpatial_euler_meth = function( t_int, y_int, stepsize, t_end,Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,site){      
+# 
+#   m = length(y_int)+1
+#   ## Number of steps and creation of output matrix
+#   
+#   nsteps = ceiling((t_end-t_int)/stepsize)
+#   Y_out = array(dim=c(nsteps+1,m,sites))
+#   
+#   ## loop for implementing the function over nsteps
+#   for (i in 1:nsteps) {
+#     
+#     for(site in 1:sites){
+#       Y_out[1,,site] = c(t_int, y_int)
+#       
+#       Y_out[i+1,,site]= Y_out[i,,site]+ stepsize*c(1, NoSpatial_LVM(Y_out[i,1,site],Y_out[i,2:m,site],Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,site))
+#     
+#     }
+#     }
+#   return(Y_out)
+#   }
 
 ###########################################################################
 # Spatial Lotka-Volterra competition model
@@ -91,27 +91,31 @@ Spatial_euler_meth = function( t_int, y_int, stepsize, t_end,Meta_Interaction_Ma
   # dimensions of output matrix
   Y_out = array(dim=c(nsteps+1,m,sites))
   
-  # Y_out[1,,1] = c(t_int, y_int)
-  # Y_out[1,,2] = c(t_int, y_int)
-  # Y_out[1,,3] = c(t_int, y_int)
+   Y_out[1,,1] = c(t_int, y_int)
+   Y_out[1,,2] = c(t_int, y_int)
+   Y_out[1,,3] = c(t_int, y_int)
+  
+  #Updating the population densities at the start of each step
+  #updated_pop= y_int
+  #updated_Originalpop =Original_pop
   
   # loop for implementing the Euler function over nsteps(time steps)
   for (i in 1:nsteps) {
     
-    #Updating the population densities at the start of each step
-    updated_pop= y_int
     
     #for throught the number of sites(patches)
     
     for(site in 1:sites){
       
-      Y_out[1,,site] =c(t_int,y_int)
+     
       
       Y_out[i+1,,site]= Y_out[i,,site]+ stepsize*c(1, Spatial_LVM(Y_out[i,1,site],Y_out[i,2:m,site],Meta_Interaction_Matrix,Meta_Strength_Matrix,carry_cap,int_growth,Original_pop,Emigration_Prop,site))
       
-      updated_pop= Y_out[i+1,2:m,site]
+      #updated_pop= Y_out[i+1,2:m,site]
+     
     
     }
+    #updated_Originalpop=Y_out[i+1,2:m,]
     }
   
   return(Y_out)
@@ -130,17 +134,24 @@ Meta_euler_meth_elimination_switch = function(t_int, y_int, stepsize, t_end,Meta
   nsteps = ceiling((t_end-t_int)/stepsize)
   Y_out = array(dim=c(nsteps+1,m,sites))
   
+  Y_out[1,,1] = c(t_int, y_int)
+  Y_out[1,,2] = c(t_int, y_int)
+  Y_out[1,,3] = c(t_int, y_int)
+  
+  #Updating the population after each timestep
+  current_pop=y_int
+  current_Originalpop=Original_pop
+  
   ## loop for implementing the function over nsteps
   
   for (i in 1:nsteps) {
     
-    #Updating the population after each timestep
-    current_pop=y_int
     
     # loop over the number of patches
     for(site in 1:sites){
       
-      Y_out[1,,site] = c(t_int, y_int)
+      
+      #Y_out[1,,site] = c(t_int, y_int)
       
       ###############################################
       # Elimination switching rule implemention
@@ -208,7 +219,7 @@ Meta_euler_meth_elimination_switch = function(t_int, y_int, stepsize, t_end,Meta
       
     
       }
-  
+    current_Originalpop=Y_out[i+1,2:m,]
     }
   
   return(Y_out)
@@ -232,16 +243,21 @@ Meta_euler_meth_optimization_switch = function(t_int, y_int, stepsize, t_end,Met
   # Output matrix dimensions
   Y_out = array(dim=c(nsteps+1,m,sites))
   
+  Y_out[1,,1] = c(t_int, y_int)
+  Y_out[1,,2] = c(t_int, y_int)
+  Y_out[1,,3] = c(t_int, y_int)
+  
   #Updating species population at end of each time step
   new_pop=y_int
-  
+  new_Originalpop=Original_pop
   # loop for implementing the function over nsteps(time steps)
   
   for (i in 1:nsteps) {
   
     for (site in 1:sites){
       
-      Y_out[1,,site] = c(t_int, y_int)
+      
+      #Y_out[1,,site] = c(t_int, y_int)
       
       ############################################
       # Optimization switching rule implementation at each time step
@@ -304,7 +320,7 @@ Meta_euler_meth_optimization_switch = function(t_int, y_int, stepsize, t_end,Met
         Meta_Strength_Matrix[,,site][j_opt,c(k_opt,m_opt)]=Meta_Strength_Matrix[,,site][j_opt,c(m_opt,k_opt)]
         
         dN_switch=int_growth*new_pop*((carry_cap-(Meta_Interaction_Matrix[,,site]*Meta_Strength_Matrix[,,site])%*%new_pop)/carry_cap)-
-          d*Original_pop[,site] + t(Mortality*(Emigration_Prop[site,]%*%t(Original_pop)))
+          d*new_pop + t(Mortality*(Emigration_Prop[site,]%*%t(new_Originalpop)))
         
         if ( dN_switch[j_opt] > 0){
           enter=FALSE
@@ -340,7 +356,8 @@ Meta_euler_meth_optimization_switch = function(t_int, y_int, stepsize, t_end,Met
       new_pop= Y_out[i+1,2:m,site]
       
     
-      }
+    }
+    new_Originalpop=Y_out[i+1,2:m,]
   
     } # End of site loop
   
@@ -374,6 +391,7 @@ Modified_NoSpatial_LVM <- function(pop){
 
 ######################################################################################################
 # SAVING THE FUNCTIONS 
-save(NoSpatial_LVM,NonSpatial_euler_meth,Spatial_LVM,Spatial_euler_meth,Meta_euler_meth_elimination_switch,Meta_euler_meth_optimization_switch,
+save(Spatial_LVM,Spatial_euler_meth,Meta_euler_meth_elimination_switch,Meta_euler_meth_optimization_switch,
      Modified_NoSpatial_LVM,Modified_Spatial_LVM_stab,sample_g,file="Spatialmodelfuctions.RData")
 
+##NoSpatial_LVM,NonSpatial_euler_meth,
